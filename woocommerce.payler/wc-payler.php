@@ -21,18 +21,25 @@ function payler_currency_symbol( $currency_symbol, $currency ) {
 	switch ($currency) {
 		case 'RUB':
 			$result = 'р.';
+			break;
 		case 'USD':
 			$result = '$';
+			break;
 		case 'EUR':
 			$result = '€';
+			break;
 		case 'GBP':
 			$result = '£';
+			break;
 		case 'PLN':
 			$result = 'zł';
+			break;
 		case 'TJS':
 			$result = 'ЅМ';
+			break;
 		case 'KGS':
 			$result = 'сом';
+			break;
 		default:
 			return $currency_symbol;
 	}
