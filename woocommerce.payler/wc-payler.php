@@ -17,7 +17,6 @@ function supported_currencies() {
 }
 
 function payler_currency_symbol( $currency_symbol, $currency ) {
-	$result = $currency_symbol;
 	switch ($currency) {
 		case 'RUB':
 			$result = 'р.';
