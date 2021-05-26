@@ -8,41 +8,46 @@
   Author URI: https://payler.com
  */
 
-if ( ! defined( 'ABSPATH' ) ) exit; // Exit if accessed directly
+if (!defined('ABSPATH')) {
+	exit; // Exit if accessed directly
+} 
 
 function supported_currencies() {
 	return array('RUB', 'USD', 'EUR', 'GBP', 'PLN', 'TJS', 'KGS');
 }
 
 function payler_currency_symbol( $currency_symbol, $currency ) {
+	$result = $currency_symbol;
 	switch ($currency) {
 		case 'RUB':
-			return 'р.';
+			$result = 'р.';
 		case 'USD':
-			return '$';
+			$result = '$';
 		case 'EUR':
-			return '€';
+			$result = '€';
 		case 'GBP':
-			return '£';
+			$result = '£';
 		case 'PLN':
-			return 'zł';
+			$result = 'zł';
 		case 'TJS':
-			return 'ЅМ';
+			$result = 'ЅМ';
 		case 'KGS':
-			return 'сом';
+			$result = 'сом';
+		default:
+			return $currency_symbol;
 	}
 
-    return $currency_symbol;
+    return $result;
 }
 
 function payler_currency( $currencies ) {
-    $currencies["RUB"] = 'Russian Roubles';
-	$currencies["USD"] = 'United States (US) dollar';
-	$currencies["EUR"] = 'Euro';
-    $currencies["GBP"] = 'Pound sterling';
-	$currencies["PLN"] = 'Polish złoty';
-	$currencies["TJS"] = 'Tajikistani somoni';
-	$currencies["KGS"] = 'Kyrgyzstani som';
+    $currencies['RUB'] = 'Russian Roubles';
+	$currencies['USD'] = 'United States (US) dollar';
+	$currencies['EUR'] = 'Euro';
+    $currencies['GBP'] = 'Pound sterling';
+	$currencies['PLN'] = 'Polish złoty';
+	$currencies['TJS'] = 'Tajikistani somoni';
+	$currencies['KGS'] = 'Kyrgyzstani som';
     return $currencies;
 }
 
@@ -53,10 +58,12 @@ add_filter( 'woocommerce_currencies', 'payler_currency', 10, 1 );
 
 add_action('plugins_loaded', 'woocommerce_payler', 0);
 function woocommerce_payler() {
-	if (!class_exists('WC_Payment_Gateway'))
+	if (!class_exists('WC_Payment_Gateway')) {
 		return; // if the WC payment gateway class is not available, do nothing
-	if(class_exists('WC_PAYLER'))
+	}
+	if(class_exists('WC_PAYLER')) {
 		return;
+	}
 class WC_PAYLER extends WC_Payment_Gateway{
 	public function __construct() {
 		
@@ -92,7 +99,7 @@ class WC_PAYLER extends WC_Payment_Gateway{
 		// Payment listener/API hook
 		add_action('woocommerce_api_wc_' . $this->id, array($this, 'check_ipn_response'));
 
-		if (!$this->is_valid_for_use()){
+		if (!$this->is_valid_for_use()) {
 			$this->enabled = false;
 		}
 	}
@@ -101,7 +108,7 @@ class WC_PAYLER extends WC_Payment_Gateway{
 	 * Check if this gateway is enabled and available in the user's country
 	 */
 	function is_valid_for_use(){
-		if (!in_array(get_option('woocommerce_currency'), supported_currencies())){
+		if (!in_array(get_option('woocommerce_currency'), supported_currencies())) {
 			return false;
 		}
 		return true;
@@ -231,7 +238,7 @@ class WC_PAYLER extends WC_Payment_Gateway{
 		$ch = curl_init();
 		curl_setopt_array($ch, $options);
 		$json = curl_exec($ch);
-		if ($json == false) {
+		if ($json === false) {
 			die ('Curl error: ' . curl_error($ch) . '<br>');
 		} else {
 			$payler_result = json_decode($json, TRUE);
@@ -249,41 +256,22 @@ class WC_PAYLER extends WC_Payment_Gateway{
 		global $woocommerce;
 
 		$order = new WC_Order( $order_id );
-
-		$out_summ = number_format($order->order_total, 2, '.', '');
-
-		$crc = $this->payler_merchant.':'.$out_summ.':'.$order_id.':'.$this->payler_key;
-		
-		$args = array(
-				// Merchant
-				'MrchLogin' => $this->payler_merchant,
-				'OutSum' => $out_summ,
-				'InvId' => $order_id,
-				'SignatureValue' => md5($crc),
-				'Culture' => 'ru',
-			);
-			
-		foreach ($args as $key => $value){
-			$args_array[] = '<input type="hidden" name="'.esc_attr($key).'" value="'.esc_attr($value).'" />';
-		}
-		
 		
 		$data = array(
-			"key"		=> $this->payler_key,
-			"type"		=> $this->session_type,
+			'key'		=> $this->payler_key,
+			'type'		=> $this->session_type,
 			'currency'  => $order->get_currency(),
-			"order_id"	=> $order->id.'|'.time(),
-			"amount"	=> $order->order_total * 100,
-			"userdata"  => $order->order_key
+			'order_id'	=> $order->id.'|'.time(),
+			'amount'	=> $order->order_total * 100,
+			'userdata'  => $order->order_key
 		);
 
-		$payler_result = $this->send_request("StartSession", $data);
+		$payler_result = $this->send_request('StartSession', $data);
 
 		if(isset($payler_result['session_id'])) {
 			$order->add_order_note('PaylerOderID:'.$data['order_id']);
 			return
 				'<form action="' . $this->get_payler_url() . 'Pay" method="POST" id="payler_payment_form">'."\n".
-				implode("\n", $args_array).
 				'<input type="submit" class="button alt" id="submit_payler_payment_form" value="'.__('Оплатить', 'woocommerce').'" /> <a class="button cancel" href="'.$woocommerce->cart->get_cart_url().'">'.__('Отказаться от оплаты & вернуться в корзину', 'woocommerce').'</a>'."\n".
 				'<input type="hidden" value="' . $payler_result['session_id'] . '" name="session_id">'.
 				'</form>';
@@ -326,33 +314,21 @@ class WC_PAYLER extends WC_Payment_Gateway{
 	function check_ipn_response() {
 		global $woocommerce;
 
-		$order_id = $_GET['order_id'];
+		$payler_order_id = $_GET['order_id'];
 
-		if (empty($order_id)) $order_id = $_POST['order_id'];
-
-		$args = array('post_id' => $order_id);
-
-		$payler_order_id = $order_id;
-		$order_notes = get_comments($args);
-		foreach($comments as $comment)
-		{
-			$pos = strpos($comment->comment_content, 'PaylerOrderID:');
-			if(!($pos === false))
-			{
-				$payler_order_id = substr($comment->comment_content, 14); //14 = length('PaylerOrderID:) 
-				break;
-			}
+		if (empty($payler_order_id)) {
+			$payler_order_id = $_POST['order_id'];
 		}
-		
+
 		$data = array(
-			"key"		=> $this->payler_key,
-			"order_id"  => $payler_order_id
+			'key'		=> $this->payler_key,
+			'order_id'  => $payler_order_id
 		);
 		
 		$payler_status = $this->send_request('GetAdvancedStatus', $data);
 	        
 		$payler_edit_order_id = substr($payler_status['order_id'], 0, strpos($payler_status['order_id'], '|'));
-		$our_edit_order_id    = substr($order_id, 0, strpos($order_id, '|'));
+		$our_edit_order_id    = substr($payler_order_id, 0, strpos($payler_order_id, '|'));
 
 		$order = new WC_Order($payler_edit_order_id);
 
